@@ -147,10 +147,13 @@ commands:
                 command: |
                   git rebase origin master
 
+                  ######################################################################
                   # TODO: remove this before PR is merged. This is to test git env vars:
+                  ######################################################################
                   TARGET_ORIGIN="origin"
                   TARGET_BRANCH="master"
                   pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
+                  echo $pr_info
                   PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
                   echo $PR_BRANCHES
       - semver:
