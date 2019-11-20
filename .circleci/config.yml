@@ -152,7 +152,7 @@ commands:
                   TARGET_BRANCH="master"
                   pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
                   PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
-                  echo %PR_BRANCHES
+                  echo $PR_BRANCHES
       - semver:
           bump: << parameters.bump >>
       - run:
