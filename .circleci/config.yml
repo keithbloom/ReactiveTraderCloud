@@ -150,11 +150,10 @@ commands:
                   ######################################################################
                   # TODO: remove this before PR is merged. This is to test git env vars:
                   ######################################################################
-                  TARGET_ORIGIN="origin"
+                  TARGET_USER="AdaptiveConsulting"
                   TARGET_BRANCH="master"
                   pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
-                  echo $pr_info
-                  PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
+                  PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_USER}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
                   echo $PR_BRANCHES
       - semver:
           bump: << parameters.bump >>
@@ -210,17 +209,17 @@ jobs:
       - run:
           name: "Trigger build on branches with PRs (because master had a commit)"
           command: |
-            TARGET_ORIGIN="origin"
+            TARGET_USER="AdaptiveConsulting"
             TARGET_BRANCH="master"
 
             # Fetching info about opened pull requests (using github API)
             pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
 
             # Extracting branch names from info about PRs. This info has branch names for opened PRs,
-            # the format is: ` "label": "origin:branch-name" `.
-            # To extract branch names, we need to remove the string `origin:`, remove the string `"label":` and some other extra symbols
+            # the format is: ` "label": "user:branch-name" `.
+            # To extract branch names, we need to remove the string `user:`, remove the string `"label":` and some other extra symbols
             # and then we need to exclude duplicated records:
-            PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
+            PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_USER}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
 
             if [ -z "$PR_BRANCHES" ]; then
               echo "Exiting - no branches with opened PRs"
@@ -308,6 +307,13 @@ workflows:
               only: /^release\/.*/
 
       - release_build:
+          filters:
+            branches:
+              only: master
+
+      - deploy_last_build:
+          requires:
+            - release_build
           filters:
             branches:
               only: master
