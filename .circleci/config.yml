@@ -146,15 +146,6 @@ commands:
                 name: Rebase with master
                 command: |
                   git rebase origin master
-
-                  ######################################################################
-                  # TODO: remove this before PR is merged. This is to test git env vars:
-                  ######################################################################
-                  TARGET_USER="AdaptiveConsulting"
-                  TARGET_BRANCH="master"
-                  pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
-                  PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_USER}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
-                  echo $PR_BRANCHES
       - semver:
           bump: << parameters.bump >>
       - run:
