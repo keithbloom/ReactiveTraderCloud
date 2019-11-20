@@ -126,6 +126,9 @@ commands:
   main_pipeline:
     description: "Main pipeline"
     parameters:
+      rebase_with_master:
+        type: boolean
+        default: false
       bump:
         description: The semver bump type. Must be one of "major", "minor", "patch".
         type: enum
@@ -136,6 +139,20 @@ commands:
       - setup_remote_docker
       - setup_env
       - checkout
+      - when:
+          condition: <<parameters.rebase_with_master>>
+          steps:
+            - run:
+                name: Rebase with master
+                command: |
+                  git rebase origin master
+
+                  # TODO: remove this before PR is merged. This is to test git env vars:
+                  TARGET_ORIGIN="origin"
+                  TARGET_BRANCH="master"
+                  pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
+                  PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
+                  echo %PR_BRANCHES
       - semver:
           bump: << parameters.bump >>
       - run:
@@ -181,6 +198,44 @@ jobs:
       - main_pipeline:
           bump: prerelease
           environment: none
+          rebase_with_master: true
+
+  notify_about_merge_to_master:
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - run:
+          name: "Trigger build on branches with PRs (because master had a commit)"
+          command: |
+            TARGET_ORIGIN="origin"
+            TARGET_BRANCH="master"
+
+            # Fetching info about opened pull requests (using github API)
+            pr_info=$(curl https://api.github.com/repos/AdaptiveConsulting/ReactiveTraderCloud/pulls\?state=open\?access_token\=${GIT_API_USER_TOKEN})
+
+            # Extracting branch names from info about PRs. This info has branch names for opened PRs,
+            # the format is: ` "label": "origin:branch-name" `.
+            # To extract branch names, we need to remove the string `origin:`, remove the string `"label":` and some other extra symbols
+            # and then we need to exclude duplicated records:
+            PR_BRANCHES=$( grep -oP "(?<=\"label\": \"${TARGET_ORIGIN}:).*?(?=\")" \<<< $pr_info | sort -u || true) || true
+
+            if [ -z "$PR_BRANCHES" ]; then
+              echo "Exiting - no branches with opened PRs"
+              exit 0
+            fi
+
+            # Now iterate on branches that have opened PRs and for each of them invoke a new build using
+            # Circle CI API (V2): https://github.com/CircleCI-Public/api-preview-docs/blob/master/docs/api-changes.md
+            for branch in $PR_BRANCHES
+            do
+              if [ "$branch" != $TARGET_BRANCH ]; then
+                echo "Triggering build on branch: ${branch}"
+                echo "\"branch\": \"${branch}\""
+                     curl -u ${CIRCLE_API_USER_TOKEN}: -X POST --header "Content-Type: application/json" -d "{
+                       \"branch\": \"${branch}\"
+                     }" https://circleci.com/api/v2/project/github/AdaptiveConsulting/ReactiveTraderCloud/pipeline
+              fi
+            done
 
   deploy_last_build:
     docker:
@@ -248,28 +303,27 @@ workflows:
           filters:
             branches:
               only: /^release\/.*/
+
       - release_build:
           filters:
             branches:
               only: master
-      - deploy_last_build:
-          requires:
-            - release_build
+
+      - notify_about_merge_to_master:
           filters:
             branches:
               only: master
+
       - feature_build:
           filters:
             branches:
               ignore:
                 - master
                 - /^release\/.*/
+
       - deploy_version_from_env_tag:
           filters:
             branches:
               ignore: /.*/  # only run on matching tag
             tags:
               only: /^env-.*/
-
-
-
