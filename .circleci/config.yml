@@ -218,7 +218,7 @@ jobs:
             fi
 
             # Now iterate on branches that have opened PRs and for each of them invoke a new build using
-            # Circle CI API (V2): https://github.com/CircleCI-Public/api-preview-docs/blob/master/docs/api-changes.md
+            # Circle CI API (v2): https://github.com/CircleCI-Public/api-preview-docs/blob/master/docs/api-changes.md
             for branch in $PR_BRANCHES
             do
               if [ "$branch" != $TARGET_BRANCH ]; then
